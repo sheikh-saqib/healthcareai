@@ -16,7 +16,13 @@ export default defineConfig({
       "@": path.resolve(currentDir, "client", "src"),
       "@shared": path.resolve(currentDir, "shared"),
       "@assets": path.resolve(currentDir, "attached_assets"),
+      // Explicitly resolve Font Awesome from project root
+      "@fortawesome/react-fontawesome": path.resolve(currentDir, "node_modules", "@fortawesome", "react-fontawesome"),
+      "@fortawesome/fontawesome-svg-core": path.resolve(currentDir, "node_modules", "@fortawesome", "fontawesome-svg-core"),
+      "@fortawesome/free-solid-svg-icons": path.resolve(currentDir, "node_modules", "@fortawesome", "free-solid-svg-icons"),
     },
+    // Include project root node_modules in resolution
+    dedupe: ["bootstrap", "@fortawesome/react-fontawesome", "@fortawesome/fontawesome-svg-core"],
   },
   root: path.resolve(currentDir, "client"),
   build: {
@@ -49,8 +55,8 @@ export default defineConfig({
       }
     },
     fs: {
-      strict: true,
-      deny: ["**/.*"],
+      strict: false,
+      allow: [".."],
     },
   },
 });
