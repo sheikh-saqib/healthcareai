@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getPatientInitials, formatLastVisit } from "@/lib/utils";
 
 interface PatientSearchProps {
   onNewConsultation: () => void;
@@ -76,26 +77,6 @@ export default function PatientSearch({ onNewConsultation, onAddPatient }: Patie
     } catch (error) {
       toast({ title: "Error adding patient", variant: "destructive" });
     }
-  };
-
-  const getPatientInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map(n => n[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
-  const formatLastVisit = (createdAt: Date) => {
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - new Date(createdAt).getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return "1 day ago";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return `${Math.floor(diffDays / 30)} months ago`;
   };
 
   const PatientCard = ({ patient }: { patient: Patient }) => (

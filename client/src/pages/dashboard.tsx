@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Users, Calendar, Pill, Mic, Bell, Search, Plus, UserPlus } from "lucide-react";
+import { Users, Calendar, Pill, Mic, Bell, Search, Plus, UserPlus, LayoutDashboard, FileText, Stethoscope, Clock, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
 import PatientSearch from "@/components/patient-search";
 import ConsultationRecorder from "@/components/consultation-recorder";
 import EnhancedConsultationRecorder from "@/components/enhanced-consultation-recorder";
@@ -15,8 +15,7 @@ import { LiveActivityFeed } from "@/components/live-activity-feed";
 import { DoctorProfile } from "@/components/doctor-profile";
 import { ProductionWarnings } from "@/components/production-warnings";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { useWebSocket } from "@/hooks/use-websocket";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +25,22 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 interface StatsData {
   totalPatients?: number;
@@ -42,20 +57,21 @@ export default function Dashboard() {
   const [showPatientSelectionDialog, setShowPatientSelectionDialog] = useState(false);
   const [showAllPrescriptionsDialog, setShowAllPrescriptionsDialog] = useState(false);
   const [showPatientHistoryDialog, setShowPatientHistoryDialog] = useState(false);
-  const { lastMessage } = useWebSocket();
 
-  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useQuery<StatsData>({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<StatsData>({
     queryKey: ["/api/stats"],
-    refetchInterval: 30000, // Refresh every 30 seconds
     retry: false, // Don't retry on failure
   });
 
-  // Auto-refresh data when receiving real-time updates
-  useEffect(() => {
-    if (lastMessage) {
-      refetchStats();
-    }
-  }, [lastMessage, refetchStats]);
+  // Fetch today's consultations/appointments
+  const { data: todayConsultations } = useQuery({
+    queryKey: ["/api/consultations", { date: new Date().toISOString().split('T')[0] }],
+  });
+
+  // Fetch recent consultations
+  const { data: recentConsultations } = useQuery({
+    queryKey: ["/api/consultations", { limit: 5, sort: "desc" }],
+  });
 
   const handleNewConsultation = () => {
     setShowPatientSelectionDialog(true);
@@ -79,78 +95,143 @@ export default function Dashboard() {
     setShowPatientHistoryDialog(true);
   };
 
+  const scrollToPendingReviews = () => {
+    const element = document.getElementById('pending-reviews-section');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const StatCard = ({ icon: Icon, title, value, color }: { 
     icon: any, 
     title: string, 
     value: number | string, 
     color: string 
-  }) => (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex items-center">
-          <div className={`flex-shrink-0 p-3 rounded-full ${color}`}>
-            <Icon className="h-6 w-6 text-white" />
+  }) => {
+    const colorClasses: Record<string, { bg: string; gradient: string; iconBg: string }> = {
+      blue: { 
+        bg: "bg-blue-50 border-blue-100", 
+        gradient: "from-blue-500 to-blue-600",
+        iconBg: "bg-gradient-to-br from-blue-500 to-blue-600"
+      },
+      green: { 
+        bg: "bg-green-50 border-green-100", 
+        gradient: "from-green-500 to-green-600",
+        iconBg: "bg-gradient-to-br from-green-500 to-green-600"
+      },
+      yellow: { 
+        bg: "bg-amber-50 border-amber-100", 
+        gradient: "from-amber-500 to-amber-600",
+        iconBg: "bg-gradient-to-br from-amber-500 to-amber-600"
+      },
+      purple: { 
+        bg: "bg-purple-50 border-purple-100", 
+        gradient: "from-purple-500 to-purple-600",
+        iconBg: "bg-gradient-to-br from-purple-500 to-purple-600"
+      },
+    };
+    
+    const colors = colorClasses[color] || colorClasses.blue;
+    
+    return (
+      <Card className={`hover:shadow-lg transition-all duration-200 border-2 ${colors.bg} shadow-sm`}>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`flex-shrink-0 p-3.5 rounded-xl ${colors.iconBg} shadow-md`}>
+                <Icon className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
+                <p className="text-sm font-medium text-gray-600">{title}</p>
+              </div>
+            </div>
           </div>
-          <div className="ml-4">
-            <p className="text-2xl font-semibold text-primary">{value}</p>
-            <p className="text-sm text-muted-foreground">{title}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-medical-bg">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-border sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo and Brand */}
-            <div className="flex items-center">
-              <div className="flex-shrink-0 flex items-center">
-                <div className="bg-primary text-primary-foreground rounded-lg p-2 mr-3">
-                  <div className="w-6 h-6 relative">
+      <SidebarProvider>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex w-full">
+          <Sidebar>
+            <SidebarHeader className="border-b border-sidebar-border bg-white">
+              <div className="flex items-center gap-3 px-4 py-4">
+                <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-xl p-2.5 shadow-lg">
+                  <div className="w-7 h-7 relative">
                     <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
                       <path d="M19 8h-2v3h-3v2h3v3h2v-3h3v-2h-3V8zM4 18h14v-2H4v2zM4 6v2h14V6H4zm0 5h14v-2H4v2z"/>
                     </svg>
                   </div>
                 </div>
-                <h1 className="text-2xl font-semibold text-primary">MedConsult</h1>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">MedConsult</h1>
+                  <p className="text-xs text-gray-500 font-medium">Healthcare AI Platform</p>
+                </div>
               </div>
-            </div>
+            </SidebarHeader>
+            <SidebarContent className="px-2 py-4">
+              <SidebarGroup>
+                <SidebarGroupLabel className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  Navigation
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton isActive className="rounded-lg">
+                        <LayoutDashboard className="h-5 w-5" />
+                        <span className="font-medium">Dashboard</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton className="rounded-lg">
+                        <Users className="h-5 w-5" />
+                        <span className="font-medium">Patients</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton className="rounded-lg">
+                        <Stethoscope className="h-5 w-5" />
+                        <span className="font-medium">Consultations</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton className="rounded-lg">
+                        <Pill className="h-5 w-5" />
+                        <span className="font-medium">Prescriptions</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+            <SidebarFooter>
+              <div className="px-2 py-2">
+                <RealTimeStatus />
+              </div>
+            </SidebarFooter>
+            <SidebarRail />
+          </Sidebar>
+          <SidebarInset>
+            {/* Header */}
+            <header className="bg-white/95 backdrop-blur-sm shadow-md border-b border-gray-200 sticky top-0 z-50">
+              <div className="flex h-16 items-center gap-4 px-6">
+                <SidebarTrigger className="hover:bg-gray-100" />
+                <div className="h-6 w-px bg-gray-200" />
+                <div className="flex-1" />
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
+                    <Bell className="h-5 w-5 text-gray-600" />
+                  </Button>
+                  <DoctorProfile />
+                </div>
+              </div>
+            </header>
 
-            {/* Navigation Items */}
-            <nav className="hidden md:flex space-x-8">
-              <a href="#dashboard" className="text-primary border-b-2 border-primary pb-2 px-1 text-sm font-medium">
-                Dashboard
-              </a>
-              <a href="#patients" className="text-muted-foreground hover:text-primary pb-2 px-1 text-sm font-medium">
-                Patients
-              </a>
-              <a href="#consultations" className="text-muted-foreground hover:text-primary pb-2 px-1 text-sm font-medium">
-                Consultations
-              </a>
-              <a href="#prescriptions" className="text-muted-foreground hover:text-primary pb-2 px-1 text-sm font-medium">
-                Prescriptions
-              </a>
-            </nav>
-
-            {/* Real-time Status & User Profile */}
-            <div className="flex items-center space-x-4">
-              <RealTimeStatus />
-              <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
-              <DoctorProfile />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Main Content */}
+            <main className="flex-1 overflow-auto p-8 bg-gradient-to-br from-gray-50 to-gray-100">
         
         {/* Backend Status */}
         {/* {statsError && (
@@ -196,104 +277,233 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Total Patients"
-            value={stats?.totalPatients ?? 0}
-            icon={Users}
-            color="blue"
-          />
-          <StatCard
-            title="Today's Consultations"
-            value={stats?.todayConsultations ?? 0}
-            icon={Calendar}
-            color="green"
-          />
-          <StatCard
-            title="Pending Reviews"
-            value={stats?.pendingPrescriptions ?? 0}
-            icon={Pill}
-            color="yellow"
-          />
-          <StatCard
-            title="Recorded Consultations"
-            value={stats?.recordedConsultations ?? 0}
-            icon={Mic}
-            color="purple"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Patient Search & New Consultation */}
-          <div className="lg:col-span-2 space-y-6">
-            <PatientSearch onNewConsultation={handleNewConsultation} onAddPatient={handleAddPatient} />
-            <EnhancedConsultationRecorder selectedPatientId={selectedPatientId} />
+        {/* Priority Section - Today's Schedule & Urgent Items */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Today's Schedule</h2>
+            <Button variant="outline" size="sm" onClick={handleNewConsultation}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Consultation
+            </Button>
+          </div>
+          
+          {/* Today's Stats - Quick Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <StatCard
+              title="Today's Patients"
+              value={stats?.todayConsultations ?? 0}
+              icon={Users}
+              color="blue"
+            />
+            <StatCard
+              title="Pending Reviews"
+              value={stats?.pendingPrescriptions ?? 0}
+              icon={Pill}
+              color="yellow"
+            />
+            <StatCard
+              title="Completed Today"
+              value={stats?.recordedConsultations ?? 0}
+              icon={CheckCircle2}
+              color="green"
+            />
+            <StatCard
+              title="Total Patients"
+              value={stats?.totalPatients ?? 0}
+              icon={Users}
+              color="purple"
+            />
           </div>
 
-          {/* Right Column - Live Activity, Pending Reviews & Quick Actions */}
-          <div className="space-y-6">
-            <LiveActivityFeed />
-            <PendingReviews />
-            
-            {/* Quick Actions */}
+          {/* Urgent Pending Reviews - Make it prominent */}
+          {stats?.pendingPrescriptions && stats.pendingPrescriptions > 0 && (
+            <Card className="mb-6 border-2 border-amber-300 bg-amber-50">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-amber-500 rounded-lg">
+                      <AlertTriangle className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {stats.pendingPrescriptions} Prescription{stats.pendingPrescriptions > 1 ? 's' : ''} Awaiting Review
+                      </h3>
+                      <p className="text-sm text-gray-600">Action required: Review and approve pending prescriptions</p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={scrollToPendingReviews}
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    Review Now
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Today's Appointments/Schedule */}
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold text-primary mb-6">Quick Actions</h2>
-                <div className="space-y-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                    Today's Appointments
+                  </h3>
+                  <Button variant="ghost" size="sm">
+                    View All
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+                {todayConsultations && Array.isArray(todayConsultations) && todayConsultations.length > 0 ? (
+                  <div className="space-y-3">
+                    {todayConsultations.slice(0, 5).map((consultation: any) => (
+                      <div key={consultation.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Users className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Patient ID: {consultation.patientId}</p>
+                            <p className="text-sm text-gray-500">
+                              {consultation.scheduledDateTime 
+                                ? new Date(consultation.scheduledDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                                : 'No time specified'}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant={consultation.status === 'Completed' ? 'default' : 'secondary'}>
+                          {consultation.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No appointments scheduled for today</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Consultations */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <Stethoscope className="h-5 w-5 text-green-600" />
+                    Recent Consultations
+                  </h3>
+                  <Button variant="ghost" size="sm">
+                    View All
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+                {recentConsultations && Array.isArray(recentConsultations) && recentConsultations.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentConsultations.map((consultation: any) => (
+                      <div key={consultation.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Patient ID: {consultation.patientId}</p>
+                            <p className="text-sm text-gray-500">
+                              {consultation.createdAt 
+                                ? new Date(consultation.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                                : 'Date not available'}
+                            </p>
+                            {consultation.diagnosis && (
+                              <p className="text-sm text-blue-600 mt-1">{consultation.diagnosis}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="outline">{consultation.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Stethoscope className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No recent consultations</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Patient Search */}
+            <PatientSearch onNewConsultation={handleNewConsultation} onAddPatient={handleAddPatient} />
+          </div>
+
+          {/* Right Column - Quick Actions & Important Items */}
+          <div className="space-y-6">
+            {/* Quick Actions Card */}
+            <Card className="border-2 border-blue-200 bg-blue-50/50">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+                <div className="space-y-2.5">
                   <Button 
-                    className="w-full justify-between h-auto p-4" 
+                    className="w-full justify-start h-auto p-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md" 
                     onClick={handleNewConsultation}
                   >
-                    <div className="flex items-center">
-                      <Mic className="mr-3 h-5 w-5" />
-                      <span>Start New Recording</span>
-                    </div>
-                    <div className="ml-2">→</div>
+                    <Mic className="mr-3 h-5 w-5" />
+                    <span className="font-medium">Start New Consultation</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="w-full justify-between h-auto p-4"
+                    className="w-full justify-start h-auto p-4 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+                    onClick={handleAddPatient}
+                  >
+                    <UserPlus className="mr-3 h-5 w-5" />
+                    <span className="font-medium">Add New Patient</span>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start h-auto p-4 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
                     onClick={handleViewAllPrescriptions}
                   >
-                    <div className="flex items-center">
-                      <Pill className="mr-3 h-5 w-5" />
-                      <span>View All Prescriptions</span>
-                    </div>
-                    <div className="ml-2">→</div>
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-between h-auto p-4"
-                    onClick={handlePatientHistory}
-                  >
-                    <div className="flex items-center">
-                      <Users className="mr-3 h-5 w-5" />
-                      <span>Patient History</span>
-                    </div>
-                    <div className="ml-2">→</div>
+                    <Pill className="mr-3 h-5 w-5" />
+                    <span className="font-medium">View Prescriptions</span>
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
+            {/* Pending Reviews - Prominent */}
+            <div id="pending-reviews-section">
+              <PendingReviews />
+            </div>
+
+            {/* Live Activity */}
+            <LiveActivityFeed />
+
+            {/* Recent Prescriptions */}
             <PrescriptionList />
           </div>
         </div>
-      </main>
+            </main>
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button 
-          size="lg" 
-          className="w-16 h-16 rounded-full shadow-lg"
-          onClick={handleNewConsultation}
-        >
-          <Plus className="h-8 w-8" />
-        </Button>
-      </div>
+            {/* Floating Action Button */}
+            <div className="fixed bottom-8 right-8 z-50">
+              <Button 
+                size="lg" 
+                className="w-16 h-16 rounded-full shadow-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border-0"
+                onClick={handleNewConsultation}
+              >
+                <Plus className="h-8 w-8" />
+              </Button>
+            </div>
+          </SidebarInset>
+        </div>
 
       {/* Dialogs */}
       <Dialog open={showPatientSelectionDialog} onOpenChange={setShowPatientSelectionDialog}>
@@ -347,9 +557,9 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Production Warnings */}
-      <ProductionWarnings isDevelopment={import.meta.env.DEV} />
-    </div>
+        {/* Production Warnings */}
+        <ProductionWarnings isDevelopment={import.meta.env.DEV} />
+      </SidebarProvider>
     </ErrorBoundary>
   );
 }

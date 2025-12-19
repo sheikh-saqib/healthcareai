@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "./button";
 import { Mic, Square, Pause, Play } from "lucide-react";
+import { formatDuration } from "@/lib/utils";
 
 interface AudioRecorderProps {
   onRecordingComplete: (audioBlob: Blob) => void;
@@ -97,12 +98,6 @@ export default function AudioRecorder({ onRecordingComplete, onTranscriptionUpda
       }
       setIsPaused(!isPaused);
     }
-  };
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (

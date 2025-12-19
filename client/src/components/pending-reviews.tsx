@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatDateFull } from "@/lib/utils";
 
 export default function PendingReviews() {
   const { toast } = useToast();
@@ -24,7 +25,6 @@ export default function PendingReviews() {
   
   const { data: pendingPrescriptions, isLoading, refetch } = useQuery({
     queryKey: ["/api/prescriptions", { status: "pending" }],
-    refetchInterval: 10000, // Refresh every 10 seconds
   });
 
   // Get patient data for the selected prescription
@@ -88,14 +88,6 @@ export default function PendingReviews() {
     toast({ title: "Edit prescription", description: "Edit functionality coming soon" });
   };
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
   const PrescriptionCard = ({ prescription }: { prescription: Prescription }) => {
     const { data: patient } = useQuery({
       queryKey: ["/api/patients", prescription.patientId],
@@ -112,7 +104,7 @@ export default function PendingReviews() {
             <p className="text-sm text-muted-foreground">
               {patient && `${patient.age} years old, ${patient.gender}`}
             </p>
-            <p className="text-sm text-muted-foreground">{formatDate(prescription.createdAt)}</p>
+            <p className="text-sm text-muted-foreground">{formatDateFull(prescription.createdAt)}</p>
           </div>
           <Badge variant="outline" className="bg-orange-100 text-orange-800">
             Pending Review

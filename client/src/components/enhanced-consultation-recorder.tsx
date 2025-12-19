@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatDuration } from "@/lib/utils";
 
 interface EnhancedConsultationRecorderProps {
   onClose: () => void;
@@ -182,12 +183,6 @@ export default function EnhancedConsultationRecorder({ onClose, selectedPatientI
     } finally {
       setIsAnalyzing(false);
     }
-  };
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const WaveformVisualization = () => (

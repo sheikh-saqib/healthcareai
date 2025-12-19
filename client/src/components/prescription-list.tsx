@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatDate, getPrescriptionBadgeColor, formatPrescriptionStatus } from "@/lib/utils";
 
 export default function PrescriptionList() {
   const [showPrintDialog, setShowPrintDialog] = useState(false);
@@ -21,7 +22,6 @@ export default function PrescriptionList() {
 
   const { data: prescriptions, isLoading } = useQuery({
     queryKey: ["/api/prescriptions"],
-    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Get patient data for the selected prescription
@@ -78,7 +78,7 @@ export default function PrescriptionList() {
         
       } catch (pdfError) {
         console.warn('Syncfusion PDF failed, trying alternative method:', pdfError);
-        console.warn('Error details:', pdfError.message);
+        console.warn('Error details:', (pdfError as Error).message);
         
         // Fallback to simple HTML generator
         const { SimplePdfGenerator } = await import('@/components/simple-pdf-generator');
@@ -100,40 +100,6 @@ export default function PrescriptionList() {
     }
   };
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  const getBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'default';
-      case 'rejected':
-        return 'destructive';
-      case 'pending':
-        return 'secondary';
-      default:
-        return 'outline';
-    }
-  };
-
-  const getBadgeColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'pending':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const PrescriptionCard = ({ prescription }: { prescription: Prescription }) => (
     <div className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors">
       <div className="flex items-start justify-between mb-2">
@@ -143,9 +109,9 @@ export default function PrescriptionList() {
         </div>
         <Badge 
           variant="outline" 
-          className={getBadgeColor(prescription.status)}
+          className={getPrescriptionBadgeColor(prescription.status)}
         >
-          {prescription.status.charAt(0).toUpperCase() + prescription.status.slice(1)}
+          {formatPrescriptionStatus(prescription.status)}
         </Badge>
       </div>
       

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, Brain, Pill, UserPlus, Activity } from "lucide-react";
+import { formatTime } from "@/lib/utils";
 
 interface ActivityItem {
   id: string;
@@ -80,14 +81,6 @@ export function LiveActivityFeed() {
       default:
         return <Badge variant="outline">System</Badge>;
     }
-  };
-
-  const formatTime = (timestamp: Date) => {
-    return timestamp.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
   };
 
   return (
